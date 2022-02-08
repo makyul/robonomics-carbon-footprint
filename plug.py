@@ -17,8 +17,9 @@ class PlugMonitoring:
         self.path = os.path.realpath(__file__)[:-len(__file__)]
         self.prev_time = time.time()
         self.prev_time_sending = time.time()
-        self.config = self.read_config(f"{self.path}config/config.config")
-        self.plug_seed = self.config['plug']['seed']
+        config = self.read_config(f"{self.path}config/config.yaml")
+        self.location = config["location"]
+        self.plug_seed = config["device_seed"]
         # Отправка лаунча на адрес сервиса для добавления в твина
         topics = self.read_topics()
         self.client = mqtt.Client()
@@ -35,7 +36,8 @@ class PlugMonitoring:
         data = json.loads(data)
         energy = self.write_usage(data["power"])
         if (time.time() - self.prev_time_sending) > SENDING_TIMEOUT:
-            self.send_datalog(str(energy))
+            text = {"geo": self.location, "power_usage": energy, "timestamp": time.time()}
+            self.send_datalog(str(text))
 
     def write_usage(self, power: float) -> float:
         try:
@@ -62,22 +64,33 @@ class PlugMonitoring:
             topics.append((topic, 1))
         return topics
 
-    def read_config(self, path: str) -> tp.Dict[str, str]:
-        config = configparser.ConfigParser()
-        config.read(path)
-        sections = config.sections()
-        seeds = {}
-        for section in sections:
-            if config[section]['SEED'] == None:
-                mnemonic = Keypair.generate_mnemonic()
-                print(f"Generated account for {section} with address: {Keypair.create_from_mnemonic(mnemonic, ss58_format=32)}")
-                seeds[section] = mnemonic
-                config[section]['SEED'] = mnemonic
-                with open(path, 'w') as configfile:
-                    config.write(configfile)
-            else:
-                seeds[section] = config[section]['SEED']
-        return seeds
+    def read_config(self, path: str):
+        with open(path) as f:
+            config_file = yaml.safe_load(f)
+        if "device_seed" not in config_file:
+            mnemonic = Keypair.generate_mnemonic()
+            print(f"Generated account with address: {Keypair.create_from_mnemonic(mnemonic, ss58_format=32)}")
+            config_file["device_address"] = mnemonic
+            with open(path, "w") as f:
+                yaml.dump(config_file, f)
+        return config_file
+    
+    # def read_config(self, path: str) -> tp.Dict[str, str]:
+    #     config = configparser.ConfigParser()
+    #     config.read(path)
+    #     sections = config.sections()
+    #     seeds = {}
+    #     for section in sections:
+    #         if config[section]['SEED'] == None:
+    #             mnemonic = Keypair.generate_mnemonic()
+    #             print(f"Generated account for {section} with address: {Keypair.create_from_mnemonic(mnemonic, ss58_format=32)}")
+    #             seeds[section] = mnemonic
+    #             config[section]['SEED'] = mnemonic
+    #             with open(path, 'w') as configfile:
+    #                 config.write(configfile)
+    #         else:
+    #             seeds[section] = config[section]['SEED']
+    #     return seeds
     
     def spin(self) -> None:
         self.client.loop_forever()
