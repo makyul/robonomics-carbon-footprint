@@ -1,12 +1,12 @@
 import paho.mqtt.client as mqtt
 import time
-from datetime import datetime
 import robonomicsinterface as RI
 import json
 import os
 import typing as tp
 import yaml
-import logging
+import configparser
+from substrateinterface import Keypair
 
 SENDING_TIMEOUT = 3000 # sec
 BROCKER_ADDRESS = "localhost"
@@ -17,10 +17,9 @@ class PlugMonitoring:
         self.path = os.path.realpath(__file__)[:-len(__file__)]
         self.prev_time = time.time()
         self.prev_time_sending = time.time()
-        # Чтение конфига (сид от датчика)
-        self.plug_seed = ""
-        # Создание твина если его нет
-        # Список топиков
+        self.config = self.read_config(f"{self.path}config/config.config")
+        self.plug_seed = self.config['plug']['seed']
+        # Отправка лаунча на адрес сервиса для добавления в твина
         topics = self.read_topics()
         self.client = mqtt.Client()
         self.client.connect(BROCKER_ADDRESS, BROCKER_PORT, 60)
@@ -63,6 +62,22 @@ class PlugMonitoring:
             topics.append((topic, 1))
         return topics
 
+    def read_config(self, path: str) -> tp.Dict[str, str]:
+        config = configparser.ConfigParser()
+        config.read(path)
+        sections = config.sections()
+        seeds = {}
+        for section in sections:
+            if config[section]['SEED'] == None:
+                mnemonic = Keypair.generate_mnemonic()
+                print(f"Generated account for {section} with address: {Keypair.create_from_mnemonic(mnemonic, ss58_format=32)}")
+                seeds[section] = mnemonic
+                config[section]['SEED'] = mnemonic
+                with open(path, 'w') as configfile:
+                    config.write(configfile)
+            else:
+                seeds[section] = config[section]['SEED']
+        return seeds
     
     def spin(self) -> None:
         self.client.loop_forever()
