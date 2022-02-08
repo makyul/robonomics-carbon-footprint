@@ -9,7 +9,7 @@ import configparser
 from substrateinterface import Keypair
 import os
 
-SENDING_TIMEOUT = 20 # sec
+SENDING_TIMEOUT = 90 # sec
 BROCKER_ADDRESS = "localhost"
 BROCKER_PORT = 1883
 
@@ -18,10 +18,10 @@ class PlugMonitoring:
         self.path = os.path.realpath(__file__)[:-len(__file__)]
         self.prev_time = time.time()
         self.prev_time_sending = time.time()
-        config = self.read_config(f"{self.path}config/config.yaml")
-        self.location = config["location"]
-        self.plug_seed = config["device_seed"]
-        self.service_address = config["service_address"]
+        self.config = self.read_config(f"{self.path}config/config.yaml")
+        self.location = self.config["location"]
+        self.plug_seed = self.config["device_seed"]
+        self.service_address = self.config["service_address"]
         self.send_launch()
         topics = self.read_topics()
         self.client = mqtt.Client()
@@ -32,8 +32,25 @@ class PlugMonitoring:
     def send_launch(self):
         print(f"Sending launch to add topic")
         interface = RI.RobonomicsInterface(seed=self.plug_seed)
-        hash = interface.send_launch(self.service_address)
-        print(f"Launch created with hash {hash}")
+        if "twin_id" in self.config:
+            twin_id = self.config["twin_id"]
+        else:
+            twins_num = interface.custom_chainstate("DigitalTwin", "Total")
+            for i in range(twins_num.value):
+                owner = interface.custom_chainstate("DigitalTwin", "Owner", int(i))
+                print(f"Owner: {owner}")
+                if owner.value == self.service_address:
+                    twin_id = i
+                    break
+        topics = interface.custom_chainstate("DigitalTwin", "DigitalTwin", twin_id)
+        plug_address = Keypair.create_from_mnemonic(self.plug_seed, ss58_format=32).ss58_address
+        for topic in topics.value:
+            if topic[1] == plug_address:
+                print(f"Topic exists")
+                break
+        else:
+            hash = interface.send_launch(self.service_address, True)
+            print(f"Launch created with hash {hash}")
 
     def send_datalog(self, data: str) -> None:
         print(f"Sending datalog with data {data}")
