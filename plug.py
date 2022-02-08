@@ -102,7 +102,10 @@ class PlugMonitoring:
             with open(path, "w") as f:
                 yaml.dump(config_file, f)
         if "location" not in config_file:
-            config_file["location"] = os.environ["LOCATION"]
+            try:
+                config_file["location"] = os.environ["LOCATION"]
+            except:
+                config_file["location"] = ''
             with open(path, "w") as f:
                 yaml.dump(config_file, f)
         return config_file
