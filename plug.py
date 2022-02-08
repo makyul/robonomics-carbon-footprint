@@ -22,6 +22,7 @@ class PlugMonitoring:
         self.location = config["location"]
         self.plug_seed = config["device_seed"]
         self.service_address = config["service_address"]
+        self.send_launch()
         topics = self.read_topics()
         self.client = mqtt.Client()
         self.client.connect(BROCKER_ADDRESS, BROCKER_PORT, 60)
