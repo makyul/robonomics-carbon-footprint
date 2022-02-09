@@ -1,0 +1,28 @@
+version: "3.3"
+services:
+  eclipse-mosquitto:
+    container_name: mosquitto 
+    image: eclipse-mosquitto:latest 
+    restart: always 
+    volumes: 
+      - "./mosquitto-data:/mosquitto"
+    ports: 
+      - 1883:1883  
+    command: "mosquitto -c /mosquitto-no-auth.conf"
+  zigbee2mqtt:
+    image: "koenkk/zigbee2mqtt"
+    volumes:
+      - "./data:/app/data"
+      - "/run/udev:/run/udev:ro"
+    devices:
+      - "/dev/ttyUSB0:/dev/ttyUSB0"
+    depends_on: 
+      - eclipse-mosquitto
+  plug:
+    build: "."
+    volumes:
+      - "./data:/data"
+      - "./config/config.yaml:/config/config.yaml"
+    depends_on:
+      - eclipse-mosquitto
+      - zigbee2mqtt

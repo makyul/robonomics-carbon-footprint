@@ -1,2 +1,7 @@
 config/config.yaml
 data/energy
+mosquitto-data
+data/log
+data/coordinator_backup.json
+data/database.db
+data/state.json
