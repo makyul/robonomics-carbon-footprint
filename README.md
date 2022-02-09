@@ -82,7 +82,7 @@ $ ip a                                                 127
 ```
 Here your address is `172.17.0.1`.
 
-Edit config/config.yaml to change your location (you can look up to https://countrycode.org/ for 3-letters ISO-code):
+Create file config/config.yaml and change your location (you can look up to https://countrycode.org/ for 3-letters ISO-code):
 
 ```
 location: RUS
