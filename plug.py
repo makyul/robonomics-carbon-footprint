@@ -8,13 +8,10 @@ import yaml
 from substrateinterface import Keypair
 import logging
 
-SENDING_TIMEOUT = 3600 # sec
-BROCKER_ADDRESS = "172.17.0.1"
-BROCKER_PORT = 1883
-
 class PlugMonitoring:
     def __init__(self) -> None:
         self.logger = logging.getLogger(__name__)
+        self.logger.propagate = False
         handler = logging.StreamHandler()
         self.logger.addHandler(handler)
         self.logger.setLevel(logging.INFO)
@@ -29,7 +26,7 @@ class PlugMonitoring:
         self.send_launch()
         topics = self.read_topics()
         self.client = mqtt.Client()
-        self.client.connect(BROCKER_ADDRESS, BROCKER_PORT, 60)
+        self.client.connect(self.config['broker_address'], self.config['broker_port'], 60)
         self.client.subscribe(topics)
         self.client.on_message = self.on_message
 
@@ -63,7 +60,11 @@ class PlugMonitoring:
                     break
         topics = interface.custom_chainstate("DigitalTwin", "DigitalTwin", twin_id)
         plug_address = Keypair.create_from_mnemonic(self.plug_seed, ss58_format=32).ss58_address
-        for topic in topics.value:
+        if topics.value is None:
+            topics_list = []
+        else:
+            topics_list = topics.value
+        for topic in topics_list:
             if topic[1] == plug_address:
                 self.logger.info(f"Topic exists")
                 break
@@ -83,7 +84,8 @@ class PlugMonitoring:
         data = json.loads(data)
         energy = self.write_usage(data["power"])
         self.logger.info(f"Got mqtt message {data}")
-        if (time.time() - self.prev_time_sending) > SENDING_TIMEOUT:
+        if (time.time() - self.prev_time_sending) > self.config['sending_timeout']:
+            self.prev_time_sending = time.time()
             text = {"geo": self.location, "power_usage": energy, "timestamp": time.time()}
             self.send_datalog(str(text))
 

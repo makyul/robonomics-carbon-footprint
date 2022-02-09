@@ -1,3 +1,6 @@
-service_address: 4F3U8Yt1kkphn4XR9tpYpd3fJgjnECXjZdC5GmVJZvi9ijJa
-twin_id: 1
 location: RUS
+service_address: 4H8j5BPt1zTa6xHGq5sFuQqLFEWfU3rYB68JnMYe64Ax1Btr
+twin_id: 3
+sending_timeout: 3600
+broker_address: "172.17.0.1"
+broker_port: 1883
