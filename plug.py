@@ -5,11 +5,10 @@ import json
 import os
 import typing as tp
 import yaml
-import configparser
 from substrateinterface import Keypair
 import os
 
-SENDING_TIMEOUT = 90 # sec
+SENDING_TIMEOUT = 3600 # sec
 BROCKER_ADDRESS = "localhost"
 BROCKER_PORT = 1883
 
@@ -28,6 +27,21 @@ class PlugMonitoring:
         self.client.connect(BROCKER_ADDRESS, BROCKER_PORT, 60)
         self.client.subscribe(topics)
         self.client.on_message = self.on_message
+
+    def check_balance(self):
+        interface = RI.RobonomicsInterface(seed=self.plug_seed)
+        info = interface.custom_chainstate("System", "Account", interface.define_address())
+        if info.value['data']['free'] > 0:
+            print(f"Balance is OK")
+            balance = True
+        else:
+            print(f"Waiting fot tokens on account balance")
+            balance = False
+        while not balance:
+            info = interface.custom_chainstate("System", "Account", interface.define_address())
+            if info.value['data']['free'] > 0:
+                balance = True
+                print(f"Balance is OK")
 
     def send_launch(self):
         print(f"Sending launch to add topic")
