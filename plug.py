@@ -82,7 +82,10 @@ class PlugMonitoring:
     def on_message(self, client: mqtt.Client, userdata: None, message: mqtt.MQTTMessage) -> None:
         data = str(message.payload.decode())
         data = json.loads(data)
-        energy = self.write_usage(data["power"])
+        if "power" in data:
+            energy = self.write_usage(data["power"])
+        else:
+            energy = self.write_usage(0)
         self.logger.info(f"Got mqtt message {data}")
         if (time.time() - self.prev_time_sending) > self.config['sending_timeout']:
             self.prev_time_sending = time.time()

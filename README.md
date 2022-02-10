@@ -9,9 +9,9 @@
 
 ## Zigbee stick
 
-If you have JetHome USB JetStick Z2 it already has necessary firmware so you don't need to flash it. But if you have another adapter firstly you need to flash it with zigbee2MQTT software. You can find instructions for you device here.
+If you have JetHome USB JetStick Z2 it already has necessary firmware so you don't need to flash it. But if you have another adapter firstly you need to flash it with zigbee2MQTT software. You can find instructions for you device [here](https://www.zigbee2mqtt.io/information/supported_adapters.html).
 
-Then we need to install ziqbee2mqtt software on Raspberry. Connect the adapter and verify the adapter address (it also may be `/dev/ttyUSB1`):
+Connect the adapter and verify the adapter address (it also may be `/dev/ttyUSB1`):
 ```bash
 $ ls -l /dev/ttyUSB0
 crw-rw---- 1 root dialout 166, 0 May 16 19:15 /dev/ttyUSB0 
@@ -28,7 +28,7 @@ sudo usermod -a -G uucp $USER
 ```
 Then logout and login or restart the computer.
 
-## Docker image 
+## Installation
 
 Clone the repository:
 
@@ -37,9 +37,9 @@ git clone https://github.com/makyul/robonomics-carbon-footprint.git
 cd robonomics-carbon-footprint
 ```
 
-## Edit configs
+## Configuration
 
-Go to `data/configuration.yaml` and set `permit_join: true`, also you might want to fill fields `server` and `port` with corresponding information.
+Go to `data/configuration.yaml` and set `permit_join: true`:
 
 ```
 # Home Assistant integration (MQTT discovery)
@@ -63,8 +63,7 @@ serial:
   # Location of CC2531 USB sniffer
   port: /dev/ttyUSB0
 ```
-In `server` field use the IP of the `docker0` bridge to establish the connection: 
-
+Also you might want to fill fields `server` and `port` with corresponding information. In `server` field use the IP of the `docker0` bridge to establish the connection: 
 
 ```bash
 $ ip a                                                 127
@@ -82,7 +81,7 @@ $ ip a                                                 127
 ```
 Here your address is `172.17.0.1`.
 
-Create file config/config.yaml and change your location (you can look up to https://countrycode.org/ for 3-letters ISO-code):
+Create file `config/config.yaml` and change your location (you can look up to https://countrycode.org/ for 3-letters ISO-code):
 
 ```
 location: RUS
@@ -114,3 +113,4 @@ If you don't wont to let other devices to pait with your stick, now you can go t
 docker-compose up     
 ```
 once again to submit changes.
+
