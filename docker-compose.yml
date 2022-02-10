@@ -19,10 +19,10 @@ services:
     depends_on: 
       - eclipse-mosquitto
   plug:
-    build: "."
+    image: "loskp/carbon-footprint-client"
     volumes:
       - "./data:/data"
-      - "./config/config.yaml:/config/config.yaml"
+      - "./config:/config"
     depends_on:
       - eclipse-mosquitto
       - zigbee2mqtt
