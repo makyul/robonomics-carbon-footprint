@@ -7,14 +7,16 @@ import typing as tp
 import yaml
 from substrateinterface import Keypair
 import logging
+import threading
+
+logger = logging.getLogger(__name__)
+logger.propagate = False
+handler = logging.StreamHandler()
+logger.addHandler(handler)
+logger.setLevel(logging.INFO)
 
 class PlugMonitoring:
     def __init__(self) -> None:
-        self.logger = logging.getLogger(__name__)
-        self.logger.propagate = False
-        handler = logging.StreamHandler()
-        self.logger.addHandler(handler)
-        self.logger.setLevel(logging.INFO)
         self.path = os.path.realpath(__file__)[:-len(__file__)]
         self.prev_time = time.time()
         self.prev_time_sending = time.time()
@@ -34,19 +36,19 @@ class PlugMonitoring:
         interface = RI.RobonomicsInterface(seed=self.plug_seed)
         info = interface.custom_chainstate("System", "Account", interface.define_address())
         if info.value['data']['free'] > 0:
-            self.logger.info(f"Balance is OK")
+            logger.info(f"Balance is OK")
             balance = True
         else:
-            self.logger.info(f"Waiting fot tokens on account balance")
+            logger.info(f"Waiting fot tokens on account balance")
             balance = False
         while not balance:
             info = interface.custom_chainstate("System", "Account", interface.define_address())
             if info.value['data']['free'] > 0:
                 balance = True
-                self.logger.info(f"Balance is OK")
+                logger.info(f"Balance is OK")
 
     def send_launch(self) -> None:
-        self.logger.info(f"Check topic")
+        logger.info(f"Check topic")
         interface = RI.RobonomicsInterface(seed=self.plug_seed)
         if "twin_id" in self.config:
             twin_id = self.config["twin_id"]
@@ -54,7 +56,7 @@ class PlugMonitoring:
             twins_num = interface.custom_chainstate("DigitalTwin", "Total")
             for i in range(twins_num.value):
                 owner = interface.custom_chainstate("DigitalTwin", "Owner", int(i))
-                self.logger.info(f"Owner: {owner}")
+                logger.info(f"Owner: {owner}")
                 if owner.value == self.service_address:
                     twin_id = i
                     break
@@ -66,18 +68,18 @@ class PlugMonitoring:
             topics_list = topics.value
         for topic in topics_list:
             if topic[1] == plug_address:
-                self.logger.info(f"Topic exists")
+                logger.info(f"Topic exists")
                 break
         else:
-            self.logger.info(f"Sending launch to add topic")
+            logger.info(f"Sending launch to add topic")
             hash = interface.send_launch(self.service_address, True)
-            self.logger.info(f"Launch created with hash {hash}")
+            logger.info(f"Launch created with hash {hash}")
 
-    def send_datalog(self, data: str) -> None:
-        self.logger.info(f"Sending datalog with data {data}")
+    def send_datalog(self, data: dict) -> None:
+        logger.info(f"Sending datalog with data {data}")
         interface = RI.RobonomicsInterface(seed=self.plug_seed)
-        hash = interface.record_datalog(data)
-        self.logger.info(f"Datalog created with hash {hash}")
+        hash = interface.record_datalog(str(data))
+        logger.info(f"Datalog created with hash {hash}")
 
     def on_message(self, client: mqtt.Client, userdata: None, message: mqtt.MQTTMessage) -> None:
         data = str(message.payload.decode())
@@ -86,11 +88,12 @@ class PlugMonitoring:
             energy = self.write_usage(data["power"])
         else:
             energy = self.write_usage(0)
-        self.logger.info(f"Got mqtt message {data}")
+        logger.info(f"Got mqtt message {data}")
         if (time.time() - self.prev_time_sending) > self.config['sending_timeout']:
             self.prev_time_sending = time.time()
             text = {"geo": self.location, "power_usage": energy, "timestamp": time.time()}
-            self.send_datalog(str(text))
+            threading.Thread(target=self.send_datalog, name="DatalogSender", args=[text]).start()
+            #self.send_datalog(str(text))
 
     def write_usage(self, power: float) -> float:
         try:
@@ -114,7 +117,7 @@ class PlugMonitoring:
             topic = config["devices"][device]["friendly_name"]
             topic = f"zigbee2mqtt/{topic}"
             topics.append((topic, 1))
-        self.logger.info(f"Topics to subscribe {topics}")
+        logger.info(f"Topics to subscribe {topics}")
         return topics
 
     def read_config(self, path: str):
@@ -122,12 +125,12 @@ class PlugMonitoring:
             config_file = yaml.safe_load(f)
         if "device_seed" not in config_file:
             mnemonic = Keypair.generate_mnemonic()
-            self.logger.info(f"Generated account with address: {Keypair.create_from_mnemonic(mnemonic, ss58_format=32).ss58_address}")
+            logger.info(f"Generated account with address: {Keypair.create_from_mnemonic(mnemonic, ss58_format=32).ss58_address}")
             config_file["device_seed"] = mnemonic
             with open(path, "w") as f:
                 yaml.dump(config_file, f)
         else:
-            self.logger.info(f"Your device address is {Keypair.create_from_mnemonic(config_file['device_seed'], ss58_format=32).ss58_address}")
+            logger.info(f"Your device address is {Keypair.create_from_mnemonic(config_file['device_seed'], ss58_format=32).ss58_address}")
         if "location" not in config_file:
             try:
                 config_file["location"] = os.environ["LOCATION"]
@@ -139,6 +142,7 @@ class PlugMonitoring:
     
     def spin(self) -> None:
         self.client.loop_forever()
+        logger.info("End")
 
 if __name__ == '__main__':
     PlugMonitoring().spin()
